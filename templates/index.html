@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo da Mega 2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .num-btn {
+            transition: all 0.15s ease-in-out;
+        }
+        .num-btn.selected {
+            background-color: #059669; /* emerald-600 */
+            color: white;
+            font-weight: bold;
+            transform: scale(1.05);
+            border-color: #047857;
+        }
+        .star-btn {
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .star-btn:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 bg-emerald-700 text-white p-6 rounded-xl shadow-md">
+            <div>
+                <h1 class="text-3xl font-bold">🎯 Bingo da Mega 2.0</h1>
+                <p class="text-emerald-100 text-sm">Painel de Administração e Apuração de Resultados</p>
+            </div>
+            <div class="flex items-center gap-4 mt-4 md:mt-0">
+                <button id="btn-reset-bingo" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-1">
+                    ⚠️ Reiniciar Bingo
+                </button>
+                <div id="status-badge" class="px-4 py-2 rounded-full font-semibold bg-yellow-500 text-gray-900 text-sm">
+                    Aguardando Início
+                </div>
+            </div>
+        </header>
+
+        <!-- Grade Principal -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Coluna Esquerda: Configurações, Testes e Cadastro -->
+            <div class="space-y-6">
+                
+                <!-- Card Configuração Inicial -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">1. Concurso de Partida</h2>
+                    <form id="form-config" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium">Nº Concurso Inicial (Mega-Sena)</label>
+                            <input type="number" id="concurso_inicial" required class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <button type="submit" id="btn-iniciar-bingo" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition">
+                            Iniciar Bingo
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Card Ferramentas de Teste: Gerar Lotes -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-2 border-amber-300 bg-amber-50/30">
+                    <h2 class="text-xl font-bold mb-2 text-amber-900 flex items-center gap-1">🧪 Modo de Testes</h2>
+                    <p class="text-xs text-gray-600 mb-4">Gere cartelas aleatórias em massa para testar o sistema:</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="gerarLoteCartelas(10)" class="btn-lote bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2 rounded-lg transition">10</button>
+                        <button onclick="gerarLoteCartelas(30)" class="btn-lote bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2 rounded-lg transition">30</button>
+                        <button onclick="gerarLoteCartelas(50)" class="btn-lote bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2 rounded-lg transition">50</button>
+                        <button onclick="gerarLoteCartelas(100)" class="btn-lote bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2 rounded-lg transition">100</button>
+                    </div>
+                </div>
+
+                <!-- Card Importação por PDF -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">📄 Importar Cartelas (PDF)</h2>
+                    <form id="form-upload-pdf" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Selecione o arquivo PDF de cartelas:</label>
+                            <input type="file" id="pdf_file" accept=".pdf" required class="w-full text-xs text-gray-500 border rounded-lg p-2 bg-gray-50">
+                        </div>
+                        <button type="submit" id="btn-upload-pdf" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition">
+                            Upload e Cadastrar do PDF
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Card Cadastro Manual de Cartela com Volante Interativo -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-xl font-bold">2. Cadastrar Cartela</h2>
+                        <span id="contador-dezenas" class="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full font-bold">0 / 10 selecionadas</span>
+                    </div>
+
+                    <form id="form-cartela" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium">Nome do Participante</label>
+                            <input type="text" id="participante" required class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tipo de Cartela</label>
+                            <div class="grid grid-cols-2 gap-3 mt-1">
+                                <label class="flex items-center justify-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+                                    <input type="radio" name="tipo_cartela" value="Padrao" checked class="text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-semibold text-gray-700">Padrão</span>
+                                </label>
+                                <label class="flex items-center justify-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                                    <input type="radio" name="tipo_cartela" value="Surpresinha" class="text-purple-600 focus:ring-purple-500">
+                                    <span class="ml-2 text-sm font-semibold text-gray-700">Surpresinha</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium">Selecione 10 Dezenas:</label>
+                                <button type="button" id="btn-limpar-volante" class="text-xs text-red-600 hover:underline">Limpar seleção</button>
+                            </div>
+                            <div id="volante-grid" class="grid grid-cols-6 sm:grid-cols-10 gap-1.5 p-2 bg-gray-50 border rounded-lg">
+                                <!-- Botões gerados via JS -->
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium">Dezena Favorita</label>
+                            <select id="favorita_cartela" required disabled class="w-full mt-1 p-2 border rounded-lg bg-gray-100">
+                                <option value="">Marque 10 dezenas primeiro...</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btn-cadastrar-cartela" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
+                            Cadastrar Cartela
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Card Apuração Manual / API -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">3. Apuração do Sorteio</h2>
+                    
+                    <div class="space-y-4">
+                        <button id="btn-fetch-api" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg transition">
+                            🔄 Buscar Próximo Concurso (API Caixa)
+                        </button>
+                        
+                        <div class="border-t pt-4">
+                            <p class="text-sm font-semibold mb-2">Digitação Manual de Resultado:</p>
+                            <input type="number" id="manual_concurso" placeholder="Nº Concurso" class="w-full mb-2 p-2 border rounded-lg">
+                            <input type="text" id="manual_dezenas" placeholder="6 Dezenas (ex: 1,2,3,4,5,6)" class="w-full mb-2 p-2 border rounded-lg">
+                            <button id="btn-manual-concurso" class="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 rounded-lg transition">
+                                Registrar Concurso Manual
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Coluna Direita: Relatórios e Ganhadores -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Quadro de Prêmios e Ganhadores -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2 text-emerald-800">🏆 Quadro de Prêmios</h2>
+                    <div id="painel-premios" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Gerado Dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- Relatório / Ranking por Acertos -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b pb-4">
+                        <div>
+                            <h2 class="text-xl font-bold">📊 Ranking de Cartelas</h2>
+                            <span id="total-cartelas" class="text-xs bg-gray-200 px-2.5 py-1 rounded-full font-semibold text-gray-700">0 Cartelas</span>
+                        </div>
+
+                        <!-- Filtros: Busca e Favoritos -->
+                        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                            <!-- Toggle Favoritos -->
+                            <div class="flex border rounded-lg overflow-hidden bg-gray-100 text-xs font-semibold">
+                                <button id="btn-filtro-todas" onclick="setFiltroFavoritos(false)" class="px-3 py-1.5 bg-emerald-600 text-white transition">Todas</button>
+                                <button id="btn-filtro-favs" onclick="setFiltroFavoritos(true)" class="px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition">⭐ Favoritas (<span id="count-favs">0</span>)</button>
+                            </div>
+
+                            <!-- Input Pesquisa -->
+                            <div class="relative flex-1 md:w-48">
+                                <input type="text" id="search-participante" placeholder="Buscar participante..." oninput="filterTable()" class="w-full text-xs p-2 pl-7 border rounded-lg focus:ring-2 focus:ring-emerald-500">
+                                <span class="absolute left-2 top-2 text-xs text-gray-400">🔍</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b text-sm text-gray-600">
+                                    <th class="p-2 text-center">⭐</th>
+                                    <th class="p-3">ID</th>
+                                    <th class="p-3">Participante</th>
+                                    <th class="p-3">Tipo</th>
+                                    <th class="p-3">Fav.</th>
+                                    <th class="p-3">Acertos</th>
+                                    <th class="p-3">Marcadas</th>
+                                    <th class="p-3 text-red-600 font-bold">Faltam</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-ranking" class="divide-y text-sm">
+                                <!-- Linhas dinamicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Histórico de Concursos Processados -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">🗓 Concursos Apurados no Bingo</h2>
+                    <div id="historico-concursos" class="flex flex-wrap gap-3">
+                        <!-- Tags dinamicas -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script JS -->
+    <script>
+        let selectedNumbers = new Set();
+        let globalData = null;
+        let expandedCards = {}; // Controle de expansao do quadro de premios
+        let favoritasSet = new Set(JSON.parse(localStorage.getItem('bingo_favoritas') || '[]'));
+        let apenasFavoritas = false;
+
+        function saveFavoritas() {
+            localStorage.setItem('bingo_favoritas', JSON.stringify(Array.from(favoritasSet)));
+            document.getElementById('count-favs').innerText = favoritasSet.size;
+        }
+
+        function toggleFavorita(id) {
+            if (favoritasSet.has(id)) {
+                favoritasSet.delete(id);
+            } else {
+                favoritasSet.add(id);
+            }
+            saveFavoritas();
+            renderTabelaRanking();
+        }
+
+        function setFiltroFavoritos(somenteFavs) {
+            apenasFavoritas = somenteFavs;
+            const btnTodas = document.getElementById('btn-filtro-todas');
+            const btnFavs = document.getElementById('btn-filtro-favs');
+            
+            if (apenasFavoritas) {
+                btnFavs.className = "px-3 py-1.5 bg-amber-500 text-white font-bold transition";
+                btnTodas.className = "px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition font-normal";
+            } else {
+                btnTodas.className = "px-3 py-1.5 bg-emerald-600 text-white font-bold transition";
+                btnFavs.className = "px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition font-normal";
+            }
+            renderTabelaRanking();
+        }
+
+        function toggleExpandPremio(key) {
+            expandedCards[key] = !expandedCards[key];
+            if (globalData) renderPainelPremios(globalData.relatorio.premios);
+        }
+
+        function initVolante() {
+            const grid = document.getElementById('volante-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 60; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerText = i.toString().padStart(2, '0');
+                btn.className = 'num-btn text-xs py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700';
+                btn.dataset.num = i;
+                btn.addEventListener('click', () => toggleNumber(i, btn));
+                grid.appendChild(btn);
+            }
+        }
+
+        function toggleNumber(num, btnElement) {
+            if (selectedNumbers.has(num)) {
+                selectedNumbers.delete(num);
+                btnElement.classList.remove('selected');
+            } else {
+                if (selectedNumbers.size >= 10) {
+                    alert('Você já selecionou o limite máximo de 10 dezenas.');
+                    return;
+                }
+                selectedNumbers.add(num);
+                btnElement.classList.add('selected');
+            }
+            updateVolanteUI();
+        }
+
+        function updateVolanteUI() {
+            const count = selectedNumbers.size;
+            const contador = document.getElementById('contador-dezenas');
+            contador.innerText = `${count} / 10 selecionadas`;
+            
+            if (count === 10) {
+                contador.className = "text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold";
+            } else {
+                contador.className = "text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full font-bold";
+            }
+
+            const selectFav = document.getElementById('favorita_cartela');
+            const sortedNumbers = Array.from(selectedNumbers).sort((a, b) => a - b);
+            
+            if (count === 0) {
+                selectFav.innerHTML = '<option value="">Marque 10 dezenas primeiro...</option>';
+                selectFav.disabled = true;
+                selectFav.classList.add('bg-gray-100');
+            } else {
+                selectFav.disabled = false;
+                selectFav.classList.remove('bg-gray-100');
+                
+                const currentVal = selectFav.value;
+                selectFav.innerHTML = '<option value="">Selecione a dezena favorita...</option>' + 
+                    sortedNumbers.map(n => `<option value="${n}">Dezena ${n.toString().padStart(2, '0')}</option>`).join('');
+                
+                if (selectedNumbers.has(parseInt(currentVal))) {
+                    selectFav.value = currentVal;
+                }
+            }
+        }
+
+        function clearVolante() {
+            selectedNumbers.clear();
+            document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('selected'));
+            updateVolanteUI();
+        }
+
+        document.getElementById('btn-limpar-volante').addEventListener('click', clearVolante);
+
+        async function loadData() {
+            const res = await fetch('/api/status');
+            globalData = await res.json();
+            renderUI(globalData);
+        }
+
+        function renderUI(data) {
+            const config = data.config;
+            const concursos = data.concursos;
+
+            saveFavoritas();
+
+            const badge = document.getElementById('status-badge');
+            if (config.concurso_finalizado) {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-red-600 text-white text-sm";
+                badge.innerText = "Bingo Finalizado!";
+            } else if (config.ativo) {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-green-500 text-white text-sm";
+                badge.innerText = `Em Andamento (Início: ${config.concurso_inicial})`;
+            } else {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-yellow-500 text-gray-900 text-sm";
+                badge.innerText = "Aguardando Início";
+            }
+
+            document.getElementById('concurso_inicial').value = config.concurso_inicial || '';
+            document.getElementById('btn-iniciar-bingo').disabled = config.ativo;
+            document.getElementById('btn-cadastrar-cartela').disabled = config.ativo;
+            document.getElementById('btn-upload-pdf').disabled = config.ativo;
+            document.querySelectorAll('.btn-lote').forEach(b => b.disabled = config.ativo);
+
+            document.getElementById('total-cartelas').innerText = `${data.relatorio.cartelas.length} Cartelas`;
+
+            renderPainelPremios(data.relatorio.premios);
+            renderTabelaRanking();
+
+            // Histórico de Concursos
+            const hist = document.getElementById('historico-concursos');
+            hist.innerHTML = Object.keys(concursos).length > 0 
+                ? Object.entries(concursos).map(([num, info]) => `
+                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs p-2 rounded-lg">
+                        <span class="font-bold">Conc. ${num}:</span> ${info.dezenas.map(n => n.toString().padStart(2, '0')).join(', ')}
+                    </div>
+                `).join('')
+                : '<p class="text-xs text-gray-400">Nenhum concurso apurado ainda.</p>';
+        }
+
+        function renderPainelPremios(p) {
+            const painelPremios = document.getElementById('painel-premios');
+            
+            const cardPremio = (key, titulo, lista, icone) => {
+                const isExpanded = !!expandedCards[key];
+                const limite = 10;
+                const temMais = lista.length > limite;
+                const listaExibida = isExpanded ? lista : lista.slice(0, limite);
+
+                return `
+                    <div class="border rounded-lg p-3 bg-gray-50 flex flex-col justify-between">
+                        <div>
+                            <p class="font-bold text-sm text-gray-700 flex items-center justify-between">
+                                <span>${icone} ${titulo}</span>
+                                <span class="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-semibold">${lista.length}</span>
+                            </p>
+                            <div class="mt-2 text-xs text-gray-600 space-y-1">
+                                ${lista.length > 0 
+                                    ? listaExibida.map(x => `
+                                        <div class="flex justify-between items-center bg-white p-1 rounded border border-gray-100">
+                                            <span class="font-semibold text-emerald-700">• ${x.participante} <span class="text-gray-400 font-normal">(#${x.cartela_id})</span></span>
+                                            ${x.concurso ? `<span class="text-[10px] text-gray-500 bg-gray-100 px-1 rounded">Conc. ${x.concurso}</span>` : ''}
+                                        </div>
+                                      `).join('') 
+                                    : '<span class="italic text-gray-400 block pt-1">Nenhum ganhador ainda</span>'}
+                            </div>
+                        </div>
+                        ${temMais ? `
+                            <button onclick="toggleExpandPremio('${key}')" class="mt-2 text-xs text-emerald-600 font-bold hover:underline self-start">
+                                ${isExpanded ? '▲ Mostrar menos' : `▼ Ver todos (+${lista.length - limite})`}
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            };
+
+            painelPremios.innerHTML = `
+                ${cardPremio('principal', 'Prêmio Principal (10 Acertos)', p.principal, '🥇')}
+                ${cardPremio('favorito', 'Prêmio Favorito', p.favorito, '⭐')}
+                ${cardPremio('favorito_surpresinha', 'Prêmio Favorito Surpresinha', p.favorito_surpresinha, '🎁')}
+                ${cardPremio('quadra', 'Prêmio Quadra (Inéditas)', p.quadra, '🔹')}
+                ${cardPremio('quina', 'Prêmio Quina (Inéditas)', p.quina, '🔷')}
+                ${cardPremio('sena', 'Prêmio Sena (Inéditas)', p.sena, '💎')}
+                ${cardPremio('menos_pontos', 'Prêmio Menos Pontos', p.menos_pontos, '🔻')}
+            `;
+        }
+
+        function filterTable() {
+            renderTabelaRanking();
+        }
+
+        function renderTabelaRanking() {
+            if (!globalData) return;
+
+            const query = document.getElementById('search-participante').value.toLowerCase().strip ? document.getElementById('search-participante').value.toLowerCase().strip() : document.getElementById('search-participante').value.toLowerCase();
+            const tbody = document.getElementById('tabela-ranking');
+
+            let cartelasFiltradas = globalData.relatorio.cartelas;
+
+            // Filtro por Favoritos
+            if (apenasFavoritas) {
+                cartelasFiltradas = cartelasFiltradas.filter(c => favoritasSet.has(c.id));
+            }
+
+            // Filtro por Pesquisa de Nome
+            if (query) {
+                cartelasFiltradas = cartelasFiltradas.filter(c => c.participante.toLowerCase().includes(query));
+            }
+
+            if (cartelasFiltradas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400 italic">Nenhuma cartela encontrada.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = cartelasFiltradas.map(c => {
+                const isFav = favoritasSet.has(c.id);
+                return `
+                    <tr class="hover:bg-gray-50 ${isFav ? 'bg-amber-50/40' : ''}">
+                        <td class="p-2 text-center">
+                            <button onclick="toggleFavorita(${c.id})" class="star-btn text-base">
+                                ${isFav ? '⭐' : '☆'}
+                            </button>
+                        </td>
+                        <td class="p-3 font-semibold text-xs">#${c.id}</td>
+                        <td class="p-3 font-medium text-xs">${c.participante}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 text-[10px] rounded font-semibold ${c.tipo === 'Surpresinha' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">${c.tipo}</span></td>
+                        <td class="p-3 font-bold text-xs text-emerald-600">${c.favorita.toString().padStart(2, '0')}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 text-xs font-bold rounded bg-emerald-100 text-emerald-800">${c.acertos_totais} / 10</span></td>
+                        <td class="p-3 text-xs text-emerald-700 font-medium">${c.dezenas_marcadas.map(n => n.toString().padStart(2, '0')).join(', ') || '-'}</td>
+                        <td class="p-3 text-xs text-red-600 font-semibold">${c.dezenas_faltantes.map(n => n.toString().padStart(2, '0')).join(', ')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function gerarLoteCartelas(qtd) {
+            const res = await fetch('/api/cartelas/gerar-lote', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({quantidade: qtd})
+            });
+            const data = await res.json();
+            alert(data.message);
+            loadData();
+        }
+
+        document.getElementById('btn-reset-bingo').addEventListener('click', async () => {
+            if (confirm("ATENÇÃO: Tem certeza que deseja reiniciar o Bingo? Todas as cartelas e concursos gravados serão APAGADOS definitivamente!")) {
+                const res = await fetch('/api/reset', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                loadData();
+            }
+        });
+
+        document.getElementById('form-config').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const conc = document.getElementById('concurso_inicial').value;
+            const res = await fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({concurso_inicial: conc})
+            });
+            const data = await res.json();
+            alert(data.message);
+            loadData();
+        });
+
+        document.getElementById('form-upload-pdf').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('pdf_file').files[0]);
+
+            const res = await fetch('/api/cartelas/upload-pdf', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+                document.getElementById('pdf_file').value = '';
+                loadData();
+            }
+        });
+
+        document.getElementById('form-cartela').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (selectedNumbers.size !== 10) {
+                alert('Selecione exatamente 10 dezenas no volante.');
+                return;
+            }
+
+            const participante = document.getElementById('participante').value;
+            const tipo = document.querySelector('input[name="tipo_cartela"]:checked').value;
+            const dezenas = Array.from(selectedNumbers);
+            const favorita = parseInt(document.getElementById('favorita_cartela').value);
+
+            if (!favorita) {
+                alert('Selecione a dezena favorita.');
+                return;
+            }
+
+            const res = await fetch('/api/cartela', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({participante, tipo, dezenas, favorita})
+            });
+            const data = await res.json();
+            alert(data.message);
+            if(data.success) {
+                document.getElementById('participante').value = '';
+                clearVolante();
+            }
+            loadData();
+        });
+
+        document.getElementById('btn-fetch-api').addEventListener('click', async () => {
+            const res = await fetch('/api/concurso/fetch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            const data = await res.json();
+            alert(data.message);
+            loadData();
+        });
+
+        document.getElementById('btn-manual-concurso').addEventListener('click', async () => {
+            const concurso = document.getElementById('manual_concurso').value;
+            const dezenas = document.getElementById('manual_dezenas').value.split(',').map(n => parseInt(n.trim()));
+
+            const res = await fetch('/api/concurso/manual', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({concurso, dezenas})
+            });
+            const data = await res.json();
+            alert(data.message);
+            loadData();
+        });
+
+        initVolante();
+        loadData();
+    </script>
+</body>
+</html>

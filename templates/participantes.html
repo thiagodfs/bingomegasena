@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acompanhamento - Bingo da Mega 2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .star-btn { cursor: pointer; transition: transform 0.1s ease; }
+        .star-btn:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Header Simplificado -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 bg-emerald-700 text-white p-6 rounded-xl shadow-md">
+            <div>
+                <h1 class="text-3xl font-bold">🎯 Bingo da Mega 2.0</h1>
+                <p class="text-emerald-100 text-sm">Painel de Acompanhamento dos Participantes</p>
+            </div>
+            <div id="status-badge" class="mt-4 md:mt-0 px-4 py-2 rounded-full font-semibold bg-yellow-500 text-gray-900 text-sm">
+                Carregando...
+            </div>
+        </header>
+
+        <div class="space-y-6">
+            
+            <!-- Quadro de Prêmios -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2 text-emerald-800">🏆 Quadro de Prêmios</h2>
+                <div id="painel-premios" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Gerado Dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Ranking de Cartelas -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">📊 Ranking de Cartelas</h2>
+                        <span id="total-cartelas" class="text-xs bg-gray-200 px-2.5 py-1 rounded-full font-semibold text-gray-700">0 Cartelas</span>
+                    </div>
+
+                    <!-- Filtros: Busca e Favoritos -->
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <div class="flex border rounded-lg overflow-hidden bg-gray-100 text-xs font-semibold">
+                            <button id="btn-filtro-todas" onclick="setFiltroFavoritos(false)" class="px-3 py-1.5 bg-emerald-600 text-white transition">Todas</button>
+                            <button id="btn-filtro-favs" onclick="setFiltroFavoritos(true)" class="px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition">⭐ Minhas Cartelas (<span id="count-favs">0</span>)</button>
+                        </div>
+
+                        <div class="relative flex-1 md:w-48">
+                            <input type="text" id="search-participante" placeholder="Buscar meu nome..." oninput="renderTabelaRanking()" class="w-full text-xs p-2 pl-7 border rounded-lg focus:ring-2 focus:ring-emerald-500">
+                            <span class="absolute left-2 top-2 text-xs text-gray-400">🔍</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b text-sm text-gray-600">
+                                <th class="p-2 text-center">⭐</th>
+                                <th class="p-3">ID</th>
+                                <th class="p-3">Participante</th>
+                                <th class="p-3">Tipo</th>
+                                <th class="p-3">Fav.</th>
+                                <th class="p-3">Acertos</th>
+                                <th class="p-3">Marcadas</th>
+                                <th class="p-3 text-red-600 font-bold">Faltam</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-ranking" class="divide-y text-sm">
+                            <!-- Linhas dinamicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Histórico de Concursos -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2">🗓 Concursos Apurados</h2>
+                <div id="historico-concursos" class="flex flex-wrap gap-3">
+                    <!-- Tags dinamicas -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script JS -->
+    <script>
+        let globalData = null;
+        let expandedCards = {};
+        let favoritasSet = new Set(JSON.parse(localStorage.getItem('bingo_favoritas') || '[]'));
+        let apenasFavoritas = false;
+
+        function saveFavoritas() {
+            localStorage.setItem('bingo_favoritas', JSON.stringify(Array.from(favoritasSet)));
+            document.getElementById('count-favs').innerText = favoritasSet.size;
+        }
+
+        function toggleFavorita(id) {
+            if (favoritasSet.has(id)) { favoritasSet.delete(id); } 
+            else { favoritasSet.add(id); }
+            saveFavoritas();
+            renderTabelaRanking();
+        }
+
+        function setFiltroFavoritos(somenteFavs) {
+            apenasFavoritas = somenteFavs;
+            const btnTodas = document.getElementById('btn-filtro-todas');
+            const btnFavs = document.getElementById('btn-filtro-favs');
+            
+            if (apenasFavoritas) {
+                btnFavs.className = "px-3 py-1.5 bg-amber-500 text-white font-bold transition";
+                btnTodas.className = "px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition font-normal";
+            } else {
+                btnTodas.className = "px-3 py-1.5 bg-emerald-600 text-white font-bold transition";
+                btnFavs.className = "px-3 py-1.5 text-gray-700 hover:bg-gray-200 transition font-normal";
+            }
+            renderTabelaRanking();
+        }
+
+        function toggleExpandPremio(key) {
+            expandedCards[key] = !expandedCards[key];
+            if (globalData) renderPainelPremios(globalData.relatorio.premios);
+        }
+
+        async function loadData() {
+            const res = await fetch('/api/status');
+            globalData = await res.json();
+            renderUI(globalData);
+        }
+
+        function renderUI(data) {
+            const config = data.config;
+            const concursos = data.concursos;
+            saveFavoritas();
+
+            const badge = document.getElementById('status-badge');
+            if (config.concurso_finalizado) {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-red-600 text-white text-sm";
+                badge.innerText = "Bingo Finalizado!";
+            } else if (config.ativo) {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-green-500 text-white text-sm";
+                badge.innerText = `Em Andamento (Início: ${config.concurso_inicial})`;
+            } else {
+                badge.className = "px-4 py-2 rounded-full font-semibold bg-yellow-500 text-gray-900 text-sm";
+                badge.innerText = "Aguardando Início";
+            }
+
+            document.getElementById('total-cartelas').innerText = `${data.relatorio.cartelas.length} Cartelas`;
+
+            renderPainelPremios(data.relatorio.premios);
+            renderTabelaRanking();
+
+            const hist = document.getElementById('historico-concursos');
+            hist.innerHTML = Object.keys(concursos).length > 0 
+                ? Object.entries(concursos).map(([num, info]) => `
+                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs p-2 rounded-lg">
+                        <span class="font-bold">Conc. ${num}:</span> ${info.dezenas.map(n => n.toString().padStart(2, '0')).join(', ')}
+                    </div>
+                `).join('')
+                : '<p class="text-xs text-gray-400">Nenhum concurso apurado ainda.</p>';
+        }
+
+        function renderPainelPremios(p) {
+            const painelPremios = document.getElementById('painel-premios');
+            const cardPremio = (key, titulo, lista, icone) => {
+                const isExpanded = !!expandedCards[key];
+                const limite = 10;
+                const temMais = lista.length > limite;
+                const listaExibida = isExpanded ? lista : lista.slice(0, limite);
+
+                return `
+                    <div class="border rounded-lg p-3 bg-gray-50 flex flex-col justify-between">
+                        <div>
+                            <p class="font-bold text-sm text-gray-700 flex items-center justify-between">
+                                <span>${icone} ${titulo}</span>
+                                <span class="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-semibold">${lista.length}</span>
+                            </p>
+                            <div class="mt-2 text-xs text-gray-600 space-y-1">
+                                ${lista.length > 0 
+                                    ? listaExibida.map(x => `
+                                        <div class="flex justify-between items-center bg-white p-1 rounded border border-gray-100">
+                                            <span class="font-semibold text-emerald-700">• ${x.participante} <span class="text-gray-400 font-normal">(#${x.cartela_id})</span></span>
+                                            ${x.concurso ? `<span class="text-[10px] text-gray-500 bg-gray-100 px-1 rounded">Conc. ${x.concurso}</span>` : ''}
+                                        </div>
+                                      `).join('') 
+                                    : '<span class="italic text-gray-400 block pt-1">Nenhum ganhador ainda</span>'}
+                            </div>
+                        </div>
+                        ${temMais ? `
+                            <button onclick="toggleExpandPremio('${key}')" class="mt-2 text-xs text-emerald-600 font-bold hover:underline self-start">
+                                ${isExpanded ? '▲ Mostrar menos' : `▼ Ver todos (+${lista.length - limite})`}
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            };
+
+            painelPremios.innerHTML = `
+                ${cardPremio('principal', 'Prêmio Principal (10 Acertos)', p.principal, '🥇')}
+                ${cardPremio('favorito', 'Prêmio Favorito', p.favorito, '⭐')}
+                ${cardPremio('favorito_surpresinha', 'Prêmio Favorito Surpresinha', p.favorito_surpresinha, '🎁')}
+                ${cardPremio('quadra', 'Prêmio Quadra (Inéditas)', p.quadra, '🔹')}
+                ${cardPremio('quina', 'Prêmio Quina (Inéditas)', p.quina, '🔷')}
+                ${cardPremio('sena', 'Prêmio Sena (Inéditas)', p.sena, '💎')}
+                ${cardPremio('menos_pontos', 'Prêmio Menos Pontos', p.menos_pontos, '🔻')}
+            `;
+        }
+
+        function renderTabelaRanking() {
+            if (!globalData) return;
+            const query = document.getElementById('search-participante').value.toLowerCase().trim();
+            const tbody = document.getElementById('tabela-ranking');
+
+            let cartelasFiltradas = globalData.relatorio.cartelas;
+
+            if (apenasFavoritas) {
+                cartelasFiltradas = cartelasFiltradas.filter(c => favoritasSet.has(c.id));
+            }
+
+            if (query) {
+                cartelasFiltradas = cartelasFiltradas.filter(c => c.participante.toLowerCase().includes(query));
+            }
+
+            if (cartelasFiltradas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400 italic">Nenhuma cartela encontrada.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = cartelasFiltradas.map(c => {
+                const isFav = favoritasSet.has(c.id);
+                return `
+                    <tr class="hover:bg-gray-50 ${isFav ? 'bg-amber-50/40' : ''}">
+                        <td class="p-2 text-center">
+                            <button onclick="toggleFavorita(${c.id})" class="star-btn text-base">
+                                ${isFav ? '⭐' : '☆'}
+                            </button>
+                        </td>
+                        <td class="p-3 font-semibold text-xs">#${c.id}</td>
+                        <td class="p-3 font-medium text-xs">${c.participante}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 text-[10px] rounded font-semibold ${c.tipo === 'Surpresinha' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">${c.tipo}</span></td>
+                        <td class="p-3 font-bold text-xs text-emerald-600">${c.favorita.toString().padStart(2, '0')}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 text-xs font-bold rounded bg-emerald-100 text-emerald-800">${c.acertos_totais} / 10</span></td>
+                        <td class="p-3 text-xs text-emerald-700 font-medium">${c.dezenas_marcadas.map(n => n.toString().padStart(2, '0')).join(', ') || '-'}</td>
+                        <td class="p-3 text-xs text-red-600 font-semibold">${c.dezenas_faltantes.map(n => n.toString().padStart(2, '0')).join(', ')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Atualização automática dos resultados a cada 30 segundos
+        setInterval(loadData, 30000);
+        loadData();
+    </script>
+</body>
+</html>
